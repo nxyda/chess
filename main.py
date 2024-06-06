@@ -1,6 +1,7 @@
 import pygame
 import sys
 #fwugqyuwegfuweyg
+#fijhwgufwguwefyg
 pygame.init()
 
 white = (255, 255, 255)
