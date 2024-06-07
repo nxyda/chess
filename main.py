@@ -1,7 +1,6 @@
 import pygame
 import sys
-#fwugqyuwegfuweyg
-#fijhwgufwguwefyg
+
 pygame.init()
 
 white = (255, 255, 255)
@@ -10,13 +9,19 @@ green = (0, 255, 0)
 dark_green = (0, 100, 0)
 
 screen_width = 800
-screen_heigth = 800
+screen_height = 800
 rows = 8
 cols = 8
 square_size = screen_width // cols
 
 selection = pygame.image.load("circle.png")
 selection = pygame.transform.scale(selection, (square_size, square_size))
+
+circle_enemy = pygame.image.load("circle_enemy.png")
+circle_enemy = pygame.transform.scale(circle_enemy, (square_size, square_size))
+
+dot = pygame.image.load("dot.png")
+dot = pygame.transform.scale(dot, (square_size, square_size))
 
 pieces = {
     "b": pygame.image.load("pieces/black/bishop_black.png"),
@@ -33,11 +38,11 @@ pieces = {
     "R": pygame.image.load("pieces/white/rook_white.png"),
 }
 
-screen = pygame.display.set_mode((screen_width, screen_heigth))
+screen = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption("Chess")
 
 
-def draw_board(screen, rows, cols, square_size, selected_pos, selection_image):
+def draw_board(screen, rows, cols, square_size, selected_pos, selection_image, possible_moves):
     white = (255, 255, 255)
     dark_green = (0, 100, 0)
     green = (0, 128, 0)
@@ -56,6 +61,13 @@ def draw_board(screen, rows, cols, square_size, selected_pos, selection_image):
     if selected_pos:
         x, y = selected_pos[0] * square_size, selected_pos[1] * square_size
         screen.blit(selection_image, (x, y))
+
+    for move in possible_moves:
+        x, y = move[0] * square_size, move[1] * square_size
+        if board[move[1]][move[0]] == " ":
+            screen.blit(dot, (x, y))
+        else:
+            screen.blit(circle_enemy, (x, y))
 
 
 def draw_pieces(screen, board):
@@ -152,39 +164,17 @@ def move(board, start, end, piece):
     return False
 
 
-def is_check(board, king_pos, king_color):
-    enemy_pieces = {
-        "w": ["P", "R", "L", "B", "Q", "K"],
-        "b": ["p", "r", "l", "b", "q", "k"]
-    }
-    if king_color == "b":
-        enemy_color = "w"
-    else:
-        enemy_color = "b"
-    for i in range(8):
-        for j in range(8):
-            if board[i][j] in enemy_pieces[enemy_color] and move(
-                    board, (j, i), king_pos, board[i][j]):
-                return True
-    return False
-
-
-def is_checkmate(board, king_pos, king_color):
-    if not is_check(board, king_pos, king_color):
-        return False
-    for i in range(8):
-        for j in range(8):
-            if board[i][j].lower() == king_color and move(
-                    board, king_pos, (j, i), board[i][j]):
-                new_board = [row[:] for row in board]
-                new_board[king_pos[1]][king_pos[0]] = " "
-                new_board[i][j] = king_color.upper()
-                if not is_check(new_board, (j, i), king_color):
-                    return False
-    return True
+def get_possible_moves(board, pos, piece):
+    possible_moves = []
+    for row in range(rows):
+        for col in range(cols):
+            if move(board, pos, (col, row), piece):
+                possible_moves.append((col, row))
+    return possible_moves
 
 
 def main():
+    global board
     board = create_board()
     running = True
     selected_piece = None
@@ -195,6 +185,7 @@ def main():
     black_king_pos = (0, 4)
 
     selection_image = selection
+    possible_moves = []
 
     while running:
         for event in pygame.event.get():
@@ -208,35 +199,28 @@ def main():
                     if move(board, selected_pos, (col, row), board[selected_pos[1]][selected_pos[0]]) and \
                        ((current_player == 1 and board[selected_pos[1]][selected_pos[0]].isupper()) or
                         (current_player == -1 and board[selected_pos[1]][selected_pos[0]].islower())):
-                        board[row][col] = board[selected_pos[1]][
-                            selected_pos[0]]
+                        board[row][col] = board[selected_pos[1]][selected_pos[0]]
                         board[selected_pos[1]][selected_pos[0]] = " "
                         selected_piece = None
                         selected_pos = None
                         current_player *= -1
+                        possible_moves = []
                     else:
                         print("Nielegalny ruch")
                         selected_piece = None
                         selected_pos = None
+                        possible_moves = []
                 else:
                     if board[row][col] != " " and \
                        ((current_player == 1 and board[row][col].isupper()) or
                         (current_player == -1 and board[row][col].islower())):
                         selected_piece = board[row][col]
                         selected_pos = (col, row)
+                        possible_moves = get_possible_moves(board, selected_pos, selected_piece)
 
-        draw_board(screen, rows, cols, square_size, selected_pos,
-                   selection_image)
+        draw_board(screen, rows, cols, square_size, selected_pos, selection_image, possible_moves)
         draw_pieces(screen, board)
         pygame.display.update()
-
-        if selected_pos is None:
-            if is_checkmate(board,  white_king_pos, 'k'):
-                print("Białe wygrały!")
-                running = False
-            elif is_checkmate(board, black_king_pos, 'K'):
-                print("Czarne wygrały!")
-                running = False
 
     pygame.quit()
     sys.exit()
